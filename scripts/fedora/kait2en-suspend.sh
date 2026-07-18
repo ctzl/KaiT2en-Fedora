@@ -43,18 +43,29 @@ current_model() {
 }
 
 needs_amdgpu_suspend_fix() {
-	local model
-	model="$(current_model 2>/dev/null || true)"
+        local model
+        model="$(current_model 2>/dev/null || true)"
 
-	case "$model" in
-		MacBookPro15,1|MacBookPro15,3|MacBookPro16,1|MacBookPro16,4)
-			is_loaded amdgpu
-			;;
-		*)
-			return 1
-			;;
-	esac
+        case "$model" in
+                MacBookPro15,1|MacBookPro15,3|MacBookPro16,1|MacBookPro16,4)
+                        if ! is_loaded amdgpu; then
+                                return 1
+                        fi
+
+                        SWITCH_PATH="/sys/kernel/debug/vgaswitcheroo/switch"
+                        if [ ! -f "$SWITCH_PATH" ] || grep -E "^[0-9]+:DIS:.*:Off:|^[0-9]+:DIS:.*:DynOff:" "$SWITCH_PATH" >/dev/null 2>&1; then
+                                log "dGPU is off or missing in vgaswitcheroo. amdgpu suspend fix not needed."
+                                return 1
+                        fi
+
+                        return 0
+                        ;;
+                *)
+                        return 1
+                        ;;
+        esac
 }
+
 
 has_bcm4377() {
 	local dev device
